@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "/src/";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 634);
+/******/ 	return __webpack_require__(__webpack_require__.s = 633);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -5580,8 +5580,27 @@ const saveToRecent = async (book) => {
 
 
 const readCover = async (epub) => {
-    var imageUrl = epub.contents.cover || (epub.contents.manifest.cover ? epub.contents.manifest.cover.url : false) || (epub.contents.manifest["cover-image"] ? epub.contents.manifest["cover-image"].url : false) || null
-    var imageBlob = imageUrl ? (await epub.store.getUrl(imageUrl) || "") : null
+    let imageUrl
+    
+    if( await epub.loaded.cover ){
+        imageUrl = await epub.loaded.cover
+    }
+    else if( await epub.loaded.manifest ){
+        let manifest = await epub.loaded.manifest
+        imageUrl = manifest.cover?(manifest.cover.href || manifest.cover.url):false || (manifest["cover-image"]?manifest["cover-image"].url:false) || null
+    }
+    else if( epub.packaging ){
+        imageUrl = epub.packaging.coverPath
+    }
+    else{
+        imageUrl = null
+    }
+
+    if(imageUrl && imageUrl[0]!="/"){
+        imageUrl = "/" + imageUrl
+    }
+
+    var imageBlob = imageUrl ? (await epub.archive.createUrl(imageUrl) || "") : null
     return new Promise((resolve, reject) => {
         resolve(imageBlob)
     })
@@ -5593,8 +5612,8 @@ const getBookMeta = async (url) => {
         if (!url) {
             throw new Error("没路径读个JB！")
         }
-        epub.open(url)
-        let meta = await epub.getMetadata()
+        await epub.open(url)
+        let meta = await epub.loaded.metadata
         meta.cover = await readCover(epub)
         epub = null
         resolve(meta)
@@ -43780,7 +43799,7 @@ module.exports = bufferFrom
 "use strict";
 
 
-var Buffer = __webpack_require__(630).Buffer;
+var Buffer = __webpack_require__(629).Buffer;
 
 function hasFrom() {
   // Node versions 5.x below 5.10 seem to have a `from` method
@@ -44059,7 +44078,7 @@ exports = module.exports = __webpack_require__(12)(undefined);
 
 
 // module
-exports.push([module.i, "\n.reader-container {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 0 6em;\n    box-sizing: border-box;\n}\n@media screen and (max-width: 580px) {\n.reader-container {\n        padding: 0 2em;\n}\n}\n\n/* .buttonlist{\n            flex: 0;\n            bottom: 2em;\n            left: 2em;\n            -webkit-app-region: no-drag;\n        } */\n.reader {\n    max-width: 100%;\n    width: 1400px;\n    height: 80%;\n    flex-shrink: 0;\n    -webkit-app-region: no-drag;\n    font-family: \"default\";\n    user-select: none;\n    pointer-events: none;\n}\n.reader>* {\n    pointer-events: none;\n}\n", ""]);
+exports.push([module.i, "\n.reader-container {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding: 0 6em;\n    box-sizing: border-box;\n}\n@media screen and (max-width: 580px) {\n.reader-container {\n        padding: 0 2em;\n}\n}\n\n/* .buttonlist{\n                flex: 0;\n                bottom: 2em;\n                left: 2em;\n                -webkit-app-region: no-drag;\n            } */\n.reader {\n    max-width: 100%;\n    width: 1400px;\n    height: 80%;\n    flex-shrink: 0;\n    -webkit-app-region: no-drag;\n    font-family: \"default\";\n    user-select: none;\n    pointer-events: none;\n}\n.reader > * {\n    pointer-events: none;\n}\n", ""]);
 
 // exports
 
@@ -44293,7 +44312,7 @@ if (typeof process !== 'undefined' && process.type === 'renderer') {
  * Module dependencies.
  */
 
-var tty = __webpack_require__(633);
+var tty = __webpack_require__(632);
 var util = __webpack_require__(206);
 
 /**
@@ -44472,14 +44491,14 @@ function createWritableStdioStream (fd) {
       break;
 
     case 'FILE':
-      var fs = __webpack_require__(631);
+      var fs = __webpack_require__(630);
       stream = new fs.SyncWriteStream(fd, { autoClose: false });
       stream._type = 'fs';
       break;
 
     case 'PIPE':
     case 'TCP':
-      var net = __webpack_require__(632);
+      var net = __webpack_require__(631);
       stream = new net.Socket({
         fd: fd,
         readable: false,
@@ -82373,8 +82392,7 @@ if (false) {(function () {
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_vuex__ = __webpack_require__(203);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__components_BookItem_vue__ = __webpack_require__(571);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__util_indexDB__ = __webpack_require__(629);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__BookOps__ = __webpack_require__(50);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__BookOps__ = __webpack_require__(50);
 //
 //
 //
@@ -82431,7 +82449,6 @@ if (false) {(function () {
 //
 //
 //
-
 
 
 
@@ -82450,7 +82467,7 @@ if (false) {(function () {
         }
     },
     mounted: async function() {
-        this.bookList = await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__BookOps__["d" /* getRecentBooks */])()
+        this.bookList = await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__BookOps__["d" /* getRecentBooks */])()
     },
     methods: {
         openBookFile() {
@@ -82470,8 +82487,8 @@ if (false) {(function () {
             })
         },
         async open(book) {
-            let url = (book ? await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__BookOps__["e" /* idToBook */])(book._id) : false) || await this.openBookFile()
-            let bookData = await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_3__BookOps__["f" /* openBook */])(url)
+            let url = (book ? await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__BookOps__["e" /* idToBook */])(book._id) : false) || await this.openBookFile()
+            let bookData = await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_2__BookOps__["f" /* openBook */])(url)
             console.log(this.$store)
             this.$store.commit("SET_BOOK", { book: bookData })
             this.$router.push("reader")
@@ -82537,135 +82554,165 @@ if (false) {(function () {
 //
 //
 
-
-
     
-// import { do } from '@reactivex/rxjs/operator/do'
-
-/* harmony default export */ __webpack_exports__["a"] = ({
-    components: {
-
-    },
-    data() {
-        return {
-            book: null
-        }
-    },
-    beforeDestroy(){
-        document.removeEventListener('keydown', this.keyEvent, false)
-        this.book = null
-        //  关闭监听事件。。。
-        this.$store._subscribers.pop()
-    },
-    async mounted() {
-        var _this = this
-        await this.loadBook()
-
-        //初始化样式
-        this.book.setStyle("font-family", "defaultText")
-
-        if(this.book){
-            this.setStyle(this.$store.state.reader.book)
-        }
-
-        //开始渲染
+    
         
-        let reader = this.$el.querySelector('.reader')
-        this.book.renderTo(reader)           
+    // import { do } from '@reactivex/rxjs/operator/do'
 
-        //初始化按键事件，在对应方法里处理
-        //准备把按键改为主进程监听
+    /* harmony default export */ __webpack_exports__["a"] = ({
+        components: {
 
-        this.$el.addEventListener('wheel', this.keyEvent, false)
-        this.$el.addEventListener('keydown', this.keyEvent, false)
-        this.book.on("renderer:keydown", _this.keyEvent.bind(_this))
+        },
+        data() {
+            return {
+                book: null,
+                font: null
+            }
+        },
+        beforeDestroy(){
+            document.removeEventListener('keydown', this.keyEvent, false)
+            this.book = null
+            //  关闭监听事件。。。
+            this.$store._subscribers.pop()
+        },
+        async beforeMount(){
+            this.font = new FontFace("defaultText", "url(../static/fonts/SourceHanSerifSC-Regular.otf)", {})
+            await this.font.load()
+        },
+        async mounted() {
+            var _this = this
+            await this.loadBook()
 
-        //初始化store监听
-        this.$store.subscribe((mutation,state)=>{
-            var storeChange = new CustomEvent('storeChange',{detail: {mutation: mutation,state: state}})
-            this.$el.dispatchEvent(storeChange)
-        })
-
-        //。。。生成事件作为源
-        //加上消抖，手速太快的时候写入DB会有冲突，控制台一篇红色。。。
-
-        var storeHandler = __WEBPACK_IMPORTED_MODULE_1__reactivex_rxjs___default.a.Observable.fromEvent(this.$el, 'storeChange')
-        // .distinctUntilChanged((pre,cur)=> _.isEqual(pre.detail.state.reader.book, cur.detail.state.reader.book))
-        .throttleTime(100)
-        .subscribe((event)=>{
-            let state = event.detail.state
-            let mutation = event.detail.mutation
-            this.syncStore(mutation, state)
-        })            
-
-
-        // 初始化阅读位置自动保存
-        this.book.on('renderer:locationChanged',(location)=>{
-            this.$store.commit("SET_LASTREAD",{cfi:location})
-        })
-
-    },
-    methods: {
-        syncStore(mutation, state){
-            if(this.$route.path == "/reader"){   
-                if(mutation.type == "SET_STYLE"){
-                    let book = state.reader.book
-                    this.setStyle(book)
-                    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__BookOps__["b" /* updateBook */])(book)
+            //初始化渲染
+            let reader = this.$el.querySelector('.reader')
+            let rendition = this.book.renderTo(reader,{
+                width: "100%",
+                height: "100%",
+                manager: "continuous"
+            })           
+            
+            let font = this.font
+            rendition.hooks.content.register((content)=>{
+	            font.load().then(function (loadedFace) {
+		            content.document.fonts.add(loadedFace)
+	            })
+            })
+            
+            //初始化样式
+            console.log(this.book)
+            rendition.on("rendered",()=>{
+                console.log(rendition.themes)
+                rendition.themes.font("defaultText")
+                if(this.book){
+                    this.setStyle(this.$store.state.reader.book)
                 }
-                else if(mutation.type == "SET_LASTREAD"){
-                    let book = state.reader.book
-                    __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__BookOps__["b" /* updateBook */])(book)
-                }
-            }
-        },
-        setStyle(book){
-            if(book.config && this.book){            
-                if(book.config["font-size"]){
-                    this.book.setStyle("font-size", book.config["font-size"])
-                }
-                if(book.config["line-height"]){                    
-                    this.book.setStyle("line-height", book.config["line-height"])
-                }
-            }
-        },
-        keyEvent(event) {
-            if (event.key == "ArrowDown" || event.key == "ArrowRight" || event.deltaX > 0 || event.deltaY > 0) {
-                console.log("下")
-                this.pageNext()
-            }
-            else if (event.key == "ArrowUp" || event.key == "ArrowLeft" || event.deltaX < 0 || event.deltaY < 0) {
-                console.log("上")
-                this.pagePrev()
-            }
-        },
-        pageNext() {
-            this.book.nextPage()
+            })
+
+            //开始渲染
+            rendition.display();
+            
+
+            //初始化按键事件，在对应方法里处理
+            //准备把按键改为主进程监听
+
+            this.$el.addEventListener('wheel', this.keyEvent, false)
+            this.$el.addEventListener('keydown', this.keyEvent, false)
+            this.book.on("renderer:keydown", _this.keyEvent.bind(_this))
+
+            //初始化store监听
+            this.$store.subscribe((mutation,state)=>{
+                var storeChange = new CustomEvent('storeChange',{detail: {mutation: mutation,state: state}})
+                this.$el.dispatchEvent(storeChange)
+            })
+
+            //。。。生成事件作为源
+            //加上消抖，手速太快的时候写入DB会有冲突，控制台一篇红色。。。
+
+            var storeHandler = __WEBPACK_IMPORTED_MODULE_1__reactivex_rxjs___default.a.Observable.fromEvent(this.$el, 'storeChange')
+            // .distinctUntilChanged((pre,cur)=> _.isEqual(pre.detail.state.reader.book, cur.detail.state.reader.book))
+            .throttleTime(100)
+            .subscribe((event)=>{
+                let state = event.detail.state
+                let mutation = event.detail.mutation
+                this.syncStore(mutation, state)
+            })            
+
+
+            // 初始化阅读位置自动保存
+            this.book.on('renderer:locationChanged',(location)=>{
+                this.$store.commit("SET_LASTREAD",{cfi:location})
+            })
 
         },
-        pagePrev() {
-            this.book.prevPage()
+        methods: {
+            syncStore(mutation, state){
+                if(this.$route.path == "/reader"){   
+                    if(mutation.type == "SET_STYLE"){
+                        let book = state.reader.book
+                        this.setStyle(book)
+                        __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__BookOps__["b" /* updateBook */])(book)
+                    }
+                    else if(mutation.type == "SET_LASTREAD"){
+                        let book = state.reader.book
+                        __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__BookOps__["b" /* updateBook */])(book)
+                    }
+                }
+            },
+            setStyle(book){
+                console.log(book)
+                if(book.config && this.book){            
+                    if(book.config["font-size"]){
+                        this.book.rendition.themes.fontSize = book.config["font-size"]
+                        this.book.rendition.themes.default({
+                            "body": {
+                                'font-size': book.config["font-size"]+"px",
+                                color: 'purple'
+                            }
+                        });
+                        
+                    }
+                    if(book.config["line-height"]){                    
+                        this.book.rendition.themes.lineHeight = book.config["line-height"]
+                    }
+                }
+            },
+            keyEvent(event) {
+                if (event.key == "ArrowDown" || event.key == "ArrowRight" || event.deltaX > 0 || event.deltaY > 0) {
+                    console.log("下")
+                    this.pageNext()
+                }
+                else if (event.key == "ArrowUp" || event.key == "ArrowLeft" || event.deltaX < 0 || event.deltaY < 0) {
+                    console.log("上")
+                    this.pagePrev()
+                }
+            },
+            pageNext() {
+                this.book.rendition.next()
+
+            },
+            pagePrev() {
+                this.book.rendition.prev()
+            },
+            async loadBook() {
+                let bookData = this.$store.state.reader.book
+                if (bookData) {
+                    let cfi = bookData.lastRead
+                    this.book = ePub(bookData.url)   
+                    let meta = await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__BookOps__["c" /* getBookMeta */])(bookData.url)
+                    document.title = meta.title || meta.bookTitle || "无题"
+                    if(cfi){
+                        this.book.locations.currentLocation = cfi
+                    }     
+                }
+                else {
+                    this.$router.push("/")
+                }
+            }
         },
-        async loadBook() {
-            let bookData = this.$store.state.reader.book
-            if (bookData) {
-                let cfi = bookData.lastRead
-                this.book = ePub(bookData.url)   
-                let meta = await __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_0__BookOps__["c" /* getBookMeta */])(bookData.url)
-                document.title = meta.bookTitle  
-                if(cfi){
-                    this.book.gotoCfi(cfi)
-                }     
-            }
-            else {
-                this.$router.push("/")
-            }
+        watch: {
+
         }
-    },
-    watch: {
-
-    }
-});
+    });
 
 
 /***/ }),
@@ -83871,101 +83918,30 @@ const mutations = {
 
 /***/ }),
 /* 629 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* unused harmony export accessIndexDB */
-/* unused harmony export getHistory */
-const dbname = "epubReader"
-const dbversion = 2
-
-function initLibDB(event){
-    var db = event.target.result
-    
-    Object.keys(storeObject).map(function(item){
-        if(!db.objectStoreNames.contains(item)){
-            var objectStore = db.createObjectStore(item,{ autoIncrement:true })            
-        }
-        else{
-            event.currentTarget.transaction.objectStore(item).createIndex('url','url',{ unique:true })
-        }
-        // Object.keys(storeObject[item]).map(function(subItem){
-        //     storeObject[item][subItem]
-        // })
-    })
-
-}
-
-async function accessIndexDB(){
-    return new Promise((resolve,reject)=>{
-        let request = window.indexedDB.open(dbname,dbversion)
-        request.onupgradeneeded = function(event){
-            initLibDB(event)
-        }
-        request.onsuccess = async function(event){
-            resolve(event.target.result)
-        }
-        request.onerror = function(event){
-            console.log("数据读取错误")
-        }
-    })
-}
-
-
-var storeObject ={
-    libBooks: {
-    },
-    recentBooks: {
-    }
-} 
-
-
-async function getHistory(){
-    return new Promise((resolve,reject)=>{        
-        var bookHistroy = []
-        accessIndexDB().then(function(db){
-            var objectStore = db.transaction(['recentBooks'],'readwrite').objectStore("recentBooks")
-            objectStore.openCursor().onsuccess = function(event){
-                var cursor = event.target.result
-                if(cursor){
-                    bookHistroy.push(cursor.value)
-                    cursor.continue()
-                }
-                else{
-                    resolve(bookHistroy)
-                }
-            }
-        })
-    })
-}
-
-
-/***/ }),
-/* 630 */
 /***/ (function(module, exports) {
 
 module.exports = require("buffer");
 
 /***/ }),
-/* 631 */
+/* 630 */
 /***/ (function(module, exports) {
 
 module.exports = require("fs");
 
 /***/ }),
-/* 632 */
+/* 631 */
 /***/ (function(module, exports) {
 
 module.exports = require("net");
 
 /***/ }),
-/* 633 */
+/* 632 */
 /***/ (function(module, exports) {
 
 module.exports = require("tty");
 
 /***/ }),
-/* 634 */
+/* 633 */
 /***/ (function(module, exports, __webpack_require__) {
 
 module.exports = __webpack_require__(207);

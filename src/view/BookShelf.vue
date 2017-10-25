@@ -58,7 +58,6 @@
 
     import { mapGetters } from 'vuex'
     import bookItem from '../components/BookItem.vue'
-    import { getHistory } from '../util/indexDB'
     import { openBook, getRecentBooks, idToBook, updateBook } from '../BookOps'
     export default {
         computed: {

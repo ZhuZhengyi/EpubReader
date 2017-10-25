@@ -135,8 +135,27 @@ const saveToRecent = async (book) => {
 
 
 const readCover = async (epub) => {
-    var imageUrl = epub.contents.cover || (epub.contents.manifest.cover ? epub.contents.manifest.cover.url : false) || (epub.contents.manifest["cover-image"] ? epub.contents.manifest["cover-image"].url : false) || null
-    var imageBlob = imageUrl ? (await epub.store.getUrl(imageUrl) || "") : null
+    let imageUrl
+    
+    if( await epub.loaded.cover ){
+        imageUrl = await epub.loaded.cover
+    }
+    else if( await epub.loaded.manifest ){
+        let manifest = await epub.loaded.manifest
+        imageUrl = manifest.cover?(manifest.cover.href || manifest.cover.url):false || (manifest["cover-image"]?manifest["cover-image"].url:false) || null
+    }
+    else if( epub.packaging ){
+        imageUrl = epub.packaging.coverPath
+    }
+    else{
+        imageUrl = null
+    }
+
+    if(imageUrl && imageUrl[0]!="/"){
+        imageUrl = "/" + imageUrl
+    }
+
+    var imageBlob = imageUrl ? (await epub.archive.createUrl(imageUrl) || "") : null
     return new Promise((resolve, reject) => {
         resolve(imageBlob)
     })
@@ -148,8 +167,8 @@ export const getBookMeta = async (url) => {
         if (!url) {
             throw new Error("没路径读个JB！")
         }
-        epub.open(url)
-        let meta = await epub.getMetadata()
+        await epub.open(url)
+        let meta = await epub.loaded.metadata
         meta.cover = await readCover(epub)
         epub = null
         resolve(meta)

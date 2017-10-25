@@ -22,11 +22,11 @@
     }
 
     /* .buttonlist{
-                flex: 0;
-                bottom: 2em;
-                left: 2em;
-                -webkit-app-region: no-drag;
-            } */
+                    flex: 0;
+                    bottom: 2em;
+                    left: 2em;
+                    -webkit-app-region: no-drag;
+                } */
 
     .reader {
         max-width: 100%;
@@ -39,7 +39,7 @@
         pointer-events: none;
     }
 
-    .reader>* {
+    .reader > * {
         pointer-events: none;
     }
 </style>
@@ -56,7 +56,8 @@
         },
         data() {
             return {
-                book: null
+                book: null,
+                font: null
             }
         },
         beforeDestroy(){
@@ -65,21 +66,42 @@
             //  关闭监听事件。。。
             this.$store._subscribers.pop()
         },
+        async beforeMount(){
+            this.font = new FontFace("defaultText", "url(../static/fonts/SourceHanSerifSC-Regular.otf)", {})
+            await this.font.load()
+        },
         async mounted() {
             var _this = this
             await this.loadBook()
 
+            //初始化渲染
+            let reader = this.$el.querySelector('.reader')
+            let rendition = this.book.renderTo(reader,{
+                width: "100%",
+                height: "100%",
+                manager: "continuous"
+            })           
+            
+            let font = this.font
+            rendition.hooks.content.register((content)=>{
+	            font.load().then(function (loadedFace) {
+		            content.document.fonts.add(loadedFace)
+	            })
+            })
+            
             //初始化样式
-            this.book.setStyle("font-family", "defaultText")
-
-            if(this.book){
-                this.setStyle(this.$store.state.reader.book)
-            }
+            console.log(this.book)
+            rendition.on("rendered",()=>{
+                console.log(rendition.themes)
+                rendition.themes.font("defaultText")
+                if(this.book){
+                    this.setStyle(this.$store.state.reader.book)
+                }
+            })
 
             //开始渲染
+            rendition.display();
             
-            let reader = this.$el.querySelector('.reader')
-            this.book.renderTo(reader)           
 
             //初始化按键事件，在对应方法里处理
             //准备把按键改为主进程监听
@@ -128,12 +150,20 @@
                 }
             },
             setStyle(book){
+                console.log(book)
                 if(book.config && this.book){            
                     if(book.config["font-size"]){
-                        this.book.setStyle("font-size", book.config["font-size"])
+                        this.book.rendition.themes.fontSize = book.config["font-size"]
+                        this.book.rendition.themes.default({
+                            "body": {
+                                'font-size': book.config["font-size"]+"px",
+                                color: 'purple'
+                            }
+                        });
+                        
                     }
                     if(book.config["line-height"]){                    
-                        this.book.setStyle("line-height", book.config["line-height"])
+                        this.book.rendition.themes.lineHeight = book.config["line-height"]
                     }
                 }
             },
@@ -148,11 +178,11 @@
                 }
             },
             pageNext() {
-                this.book.nextPage()
+                this.book.rendition.next()
 
             },
             pagePrev() {
-                this.book.prevPage()
+                this.book.rendition.prev()
             },
             async loadBook() {
                 let bookData = this.$store.state.reader.book
@@ -160,9 +190,9 @@
                     let cfi = bookData.lastRead
                     this.book = ePub(bookData.url)   
                     let meta = await getBookMeta(bookData.url)
-                    document.title = meta.bookTitle  
+                    document.title = meta.title || meta.bookTitle || "无题"
                     if(cfi){
-                        this.book.gotoCfi(cfi)
+                        this.book.locations.currentLocation = cfi
                     }     
                 }
                 else {

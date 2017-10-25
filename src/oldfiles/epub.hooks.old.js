@@ -55,7 +55,6 @@ EPUBJS.Hooks.register("beforeChapterDisplay").smartimages = function (callback, 
 		renderer.on("renderer:chapterUnload", unloaded);
 		size();
 	});
-	if (callback) callback();
 }
 
 var font = new FontFace("defaultText", "url(../static/fonts/SourceHanSerifSC-Regular.otf)", {})
