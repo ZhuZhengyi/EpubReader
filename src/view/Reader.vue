@@ -11,7 +11,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0 6em;
+        padding: 0 4em;
         box-sizing: border-box;
     }
 
@@ -67,11 +67,12 @@
             this.$store._subscribers.pop()
         },
         async beforeMount(){
-            this.font = new FontFace("defaultText", "url(../static/fonts/SourceHanSerifSC-Regular.otf)", {})
-            await this.font.load()
+            let fontFace = new FontFace("defaultText", "url(../static/fonts/SourceHanSerifSC-Regular.otf)", {})
+            this.font = await fontFace.load()
         },
         async mounted() {
             var _this = this
+            
             await this.loadBook()
 
             //初始化渲染
@@ -79,59 +80,56 @@
             let rendition = this.book.renderTo(reader,{
                 width: "100%",
                 height: "100%",
-                manager: "continuous"
-            })           
-            
-            let font = this.font
+                // manager: "continuous",
+                flow: "paginated",//scorlled
+                spread: "none"
+            })       
+
             rendition.hooks.content.register((content)=>{
-	            font.load().then(function (loadedFace) {
-		            content.document.fonts.add(loadedFace)
-	            })
+                content.document.fonts.add(_this.font)
             })
             
             //初始化样式
-            console.log(this.book)
-            rendition.on("rendered",()=>{
-                console.log(rendition.themes)
-                rendition.themes.font("defaultText")
-                if(this.book){
-                    this.setStyle(this.$store.state.reader.book)
+            this.setStyle(this.$store.state.reader.book)         
+            rendition.themes.default({
+                "*": {
+                    'font-family': "defaultText"
                 }
-            })
-
+            });
+             
             //开始渲染
-            rendition.display();
-            
+            rendition.start()
+            rendition.display( this.loadCFI() ) 
 
             //初始化按键事件，在对应方法里处理
             //准备把按键改为主进程监听
 
             this.$el.addEventListener('wheel', this.keyEvent, false)
             this.$el.addEventListener('keydown', this.keyEvent, false)
-            this.book.on("renderer:keydown", _this.keyEvent.bind(_this))
+            this.book.rendition.on("keydown", _this.keyEvent.bind(_this))
 
             //初始化store监听
             this.$store.subscribe((mutation,state)=>{
-                var storeChange = new CustomEvent('storeChange',{detail: {mutation: mutation,state: state}})
-                this.$el.dispatchEvent(storeChange)
+                this.syncStore(mutation, state)
             })
 
             //。。。生成事件作为源
             //加上消抖，手速太快的时候写入DB会有冲突，控制台一篇红色。。。
 
-            var storeHandler = Rx.Observable.fromEvent(this.$el, 'storeChange')
+            // var storeHandler = Rx.Observable.fromEvent(this.$el, 'storeChange')
             // .distinctUntilChanged((pre,cur)=> _.isEqual(pre.detail.state.reader.book, cur.detail.state.reader.book))
-            .throttleTime(100)
-            .subscribe((event)=>{
-                let state = event.detail.state
-                let mutation = event.detail.mutation
-                this.syncStore(mutation, state)
-            })            
+            // .throttleTime(100)           
+            // .subscribe((event)=>{
+            // })   
+            // var storeChange = new CustomEvent('storeChange',{detail: {mutation: mutation,state: state}})
+            // this.$el.dispatchEvent(storeChange)
+          
 
 
             // 初始化阅读位置自动保存
-            this.book.on('renderer:locationChanged',(location)=>{
-                this.$store.commit("SET_LASTREAD",{cfi:location})
+            this.book.rendition.on('locationChanged',( location )=>{
+                console.log("当前位置", location.start)
+                this.$store.commit("SET_LASTREAD",{cfi: location.start})
             })
 
         },
@@ -150,20 +148,12 @@
                 }
             },
             setStyle(book){
-                console.log(book)
                 if(book.config && this.book){            
                     if(book.config["font-size"]){
-                        this.book.rendition.themes.fontSize = book.config["font-size"]
-                        this.book.rendition.themes.default({
-                            "body": {
-                                'font-size': book.config["font-size"]+"px",
-                                color: 'purple'
-                            }
-                        });
-                        
+                        this.book.rendition.themes.fontSize(book.config["font-size"] + "px")
                     }
                     if(book.config["line-height"]){                    
-                        this.book.rendition.themes.lineHeight = book.config["line-height"]
+                        this.book.rendition.themes.override("line-height", book.config["line-height"] + "em")
                     }
                 }
             },
@@ -187,17 +177,18 @@
             async loadBook() {
                 let bookData = this.$store.state.reader.book
                 if (bookData) {
-                    let cfi = bookData.lastRead
                     this.book = ePub(bookData.url)   
                     let meta = await getBookMeta(bookData.url)
                     document.title = meta.title || meta.bookTitle || "无题"
-                    if(cfi){
-                        this.book.locations.currentLocation = cfi
-                    }     
                 }
                 else {
                     this.$router.push("/")
                 }
+            },
+            loadCFI() {                
+                let bookData = this.$store.state.reader.book
+                let cfi = bookData.lastRead
+                return cfi ? cfi : undefined          
             }
         },
         watch: {
